@@ -119,7 +119,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
 #             Note: for bigger real datasets, run 30-50 epochs on Google Colab GPU.
 # ===========================================================================
 print("\n[C] Training Graph+GRU ...")
-EPOCHS       = 12
+EPOCHS       = 8
 PATIENCE     = 3
 best_val     = float("inf")
 wait         = 0

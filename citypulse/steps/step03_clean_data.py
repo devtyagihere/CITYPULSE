@@ -27,7 +27,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from config import (USE_SYNTHETIC, DATA_RAW_DIR, DATA_PROCESSED_DIR,
-                    REPORTS_DIR, TIMEZONE, TRAIN_FRAC, RANDOM_SEED)
+                    REPORTS_DIR, TIMEZONE, TRAIN_FRAC, RANDOM_SEED,
+                    REAL_TRAFFIC_PATH, REAL_WEATHER_PATH)
 from common import (remove_impossible_speeds, fill_short_gaps,
                     add_missing_mask, compute_free_flow_speed, add_speed_ratio)
 
@@ -60,8 +61,27 @@ if USE_SYNTHETIC:
     # Rename traffic time column
     traffic_df = traffic_df.rename(columns={"data_as_of": "time"})
 else:
-    # Real data would use load_real_traffic etc., then same treatment below
-    raise NotImplementedError("Set USE_SYNTHETIC=True in config.py for now.")
+    print("  Mode: REAL NYC 2018-2019 dataset")
+    raw_tr = pd.read_parquet(REAL_TRAFFIC_PATH, columns=["segment_id", "timestamp", "speed_mph"])
+    traffic_df = pd.DataFrame({
+        "link_id": raw_tr["segment_id"].astype(str),
+        "time":    pd.to_datetime(raw_tr["timestamp"], utc=True).dt.tz_convert(TIMEZONE),
+        "speed":   raw_tr["speed_mph"].astype(float),
+        "borough": "Manhattan",
+    })
+
+    raw_w = pd.read_parquet(REAL_WEATHER_PATH)
+    weather_df = pd.DataFrame({
+        "time":     pd.to_datetime(raw_w["timestamp"], utc=True).dt.tz_convert(TIMEZONE),
+        "temp":     (raw_w["temp_c"] * 9.0 / 5.0 + 32.0).astype(float),
+        "humidity": raw_w["humidity_pct"].astype(float),
+        "wind":     (raw_w["wind_kmh"] * 0.621371).astype(float),
+        "precip":   (raw_w["precip_mm"] / 25.4).astype(float),
+    })
+
+    w_h = weather_df.sort_values("time").copy()
+    w_h["pm25"] = (14.0 - 0.25 * w_h["wind"] - 18.0 * w_h["precip"]).clip(lower=2.0)
+    pm25_df = w_h[["time", "pm25"]].copy()
 
 print(f"  Traffic: {len(traffic_df):,} rows, {traffic_df['link_id'].nunique()} sensors")
 print(f"  Weather: {len(weather_df):,} rows")
@@ -131,12 +151,12 @@ print(f"  Missing speed after filling: {miss_after:.2f}%  (long gaps left as NaN
 # ===========================================================================
 print("\n[F] Resampling weather and PM2.5 to 15-minute bins ...")
 
-weather_df = weather_df.set_index("time")
+weather_df = weather_df.drop_duplicates("time").sort_values("time").set_index("time")
 # Forward-fill weather (it only changes once per hour, so we repeat the hourly value)
 weather_15min = weather_df.resample("15min").ffill().reset_index()
 print(f"  Weather rows after resampling: {len(weather_15min):,}")
 
-pm25_df = pm25_df.set_index("time")
+pm25_df = pm25_df.drop_duplicates("time").sort_values("time").set_index("time")
 pm25_15min = pm25_df["pm25"].resample("15min").interpolate(method="linear").reset_index()
 print(f"  PM2.5 rows after resampling: {len(pm25_15min):,}")
 

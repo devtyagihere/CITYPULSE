@@ -97,7 +97,8 @@ def run_live_cycle():
     adj_matrix   = np.load(os.path.join(DATA_PROCESSED_DIR, "adj_matrix.npy"))
     order_df     = pd.read_csv(os.path.join(DATA_PROCESSED_DIR, "sensor_order.csv"))
     sensor_edge  = pd.read_csv(os.path.join(DATA_PROCESSED_DIR, "sensor_to_edge.csv"))
-    sensor_order = list(order_df["link_id"])
+    sensor_edge["link_id"] = sensor_edge["link_id"].astype(str)
+    sensor_order = [str(x) for x in order_df["link_id"]]
 
     # Pick test window matching current NYC hour (so it doesn't stay stuck at midnight 00:00!)
     from zoneinfo import ZoneInfo
@@ -160,10 +161,9 @@ def run_live_cycle():
     }])
     crisis_prob = round(float(crisis_clf.predict_proba(city_row)[0, 1]), 4)
 
-    # 5. PM2.5 +1h prediction (using latest hourly PM2.5)
+    # 5. PM2.5 +1h, +3h, +6h predictions & EPA AQI scores
     pm25_df = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "pm25_clean.parquet"))
     pm_h = pm25_df.set_index("time")["pm25"].resample("1h").mean().dropna().tail(7)
-    aqi_model = joblib.load(os.path.join(MODELS_DIR, "aqi_lgb_1h.joblib"))
     aqi_row = pd.DataFrame([{
         "pm25_lag0": float(pm_h.iloc[-1]),
         "pm25_lag1h": float(pm_h.iloc[-2]),
@@ -178,7 +178,17 @@ def run_live_cycle():
         "hour": int(cur_df["hour"].iloc[0]),
         "weekday": int(cur_df["weekday"].iloc[0]),
     }])
-    pm25_pred_1h = round(float(aqi_model.predict(aqi_row)[0]), 2)
+
+    def pm25_to_epa_aqi(pm):
+        if pm <= 12.0:  return round((50.0 / 12.0) * pm)
+        if pm <= 35.4:  return round(51 + (49.0 / 23.3) * (pm - 12.1))
+        if pm <= 55.4:  return round(101 + (49.0 / 19.9) * (pm - 35.5))
+        return round(151 + (49.0 / 94.9) * min(pm - 55.5, 94.9))
+
+    pm25_now     = round(float(pm_h.iloc[-1]), 2)
+    pm25_pred_1h = round(float(joblib.load(os.path.join(MODELS_DIR, "aqi_lgb_1h.joblib")).predict(aqi_row)[0]), 2)
+    pm25_pred_3h = round(float(joblib.load(os.path.join(MODELS_DIR, "aqi_lgb_3h.joblib")).predict(aqi_row)[0]), 2)
+    pm25_pred_6h = round(float(joblib.load(os.path.join(MODELS_DIR, "aqi_lgb_6h.joblib")).predict(aqi_row)[0]), 2)
 
     # Merge sensor GPS coords for dashboard map
     cur_with_geo = cur_df[["link_id", "speed_ratio"]].merge(
@@ -188,12 +198,13 @@ def run_live_cycle():
 
     sensors_out = []
     for i, r in cur_with_geo.iterrows():
+        cur_sr_val = None if pd.isna(r["speed_ratio"]) else round(float(r["speed_ratio"]), 4)
         sensors_out.append({
             "link_id": r["link_id"],
             "road_name": r["road_name"],
             "lat": float(r["sensor_lat"]),
             "lon": float(r["sensor_lon"]),
-            "current_sr": round(float(r["speed_ratio"]), 4),
+            "current_sr": cur_sr_val,
             "pred_15m": horizon_preds["+15m"][i],
             "pred_30m": horizon_preds["+30m"][i],
             "pred_45m": horizon_preds["+45m"][i],
@@ -214,7 +225,14 @@ def run_live_cycle():
             "crisis_probability_30m": crisis_prob,
             "crisis_warning": crisis_prob >= 0.5,
             "mean_speed_ratio": round(mean_sr, 4),
+            "pm25_now": pm25_now,
+            "aqi_now": pm25_to_epa_aqi(pm25_now),
             "pm25_pred_1h": pm25_pred_1h,
+            "aqi_1h": pm25_to_epa_aqi(pm25_pred_1h),
+            "pm25_pred_3h": pm25_pred_3h,
+            "aqi_3h": pm25_to_epa_aqi(pm25_pred_3h),
+            "pm25_pred_6h": pm25_pred_6h,
+            "aqi_6h": pm25_to_epa_aqi(pm25_pred_6h),
             "aqi_category": pm25_to_aqi_category(pm25_pred_1h),
         },
         "sensors": sensors_out,

@@ -48,7 +48,7 @@ traffic_df = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "traffic_clean.par
 weather_df = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "weather_clean.parquet"))
 adj_matrix = np.load(os.path.join(DATA_PROCESSED_DIR, "adj_matrix.npy"))
 order_df   = pd.read_csv(os.path.join(DATA_PROCESSED_DIR, "sensor_order.csv"))
-sensor_order = list(order_df["link_id"])
+sensor_order = [str(x) for x in order_df["link_id"]]
 
 print(f"  Traffic rows : {len(traffic_df):,}  |  Sensors: {len(sensor_order)}")
 print(f"  Adjacency    : {adj_matrix.shape}")

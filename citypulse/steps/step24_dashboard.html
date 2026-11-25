@@ -71,13 +71,15 @@
 </head>
 <body>
   <div id="sidebar">
-    <div class="header">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <a href="/" style="text-decoration:none; padding:5px 12px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700;">&larr; Home</a>
-        <a href="/teacher" style="text-decoration:none; padding:5px 10px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700;">Slides</a>
+    <div class="header" style="flex-direction:column; align-items:stretch; gap:8px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
         <h1>CITYPULSE</h1>
+        <span class="badge" id="sourceBadge" style="white-space:nowrap;">Loading...</span>
       </div>
-      <span class="badge" id="sourceBadge">Loading...</span>
+      <div style="display:flex; gap:8px;">
+        <a href="/" style="text-decoration:none; padding:5px 12px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700; white-space:nowrap;">&larr; Home</a>
+        <a href="/teacher" style="text-decoration:none; padding:5px 12px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700; white-space:nowrap;">Teacher Slides</a>
+      </div>
     </div>
     <div class="tip"><b>Click anywhere on Manhattan</b> to place Point A (ambulance) and route along real streets to the nearest hospital.</div>
 
@@ -109,7 +111,17 @@
       <div class="label">City Congestion & Crisis</div>
       <div class="big-num" id="congIdx">-- / 100</div>
       <div class="small" id="crisisText">Crisis (30m): --</div>
-      <div class="small" id="aqiText" style="margin-top:4px;">PM2.5 (+1h): --</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Air Quality &amp; Future AQI</div>
+      <div class="big-num" id="aqiNow" style="color:#16a34a;">-- AQI</div>
+      <div class="small" id="aqiText">Now: -- &micro;g/m&sup3;</div>
+      <div class="stats-row" style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border); font-size:12px;">
+        <span>+1h: <b id="aqi1h">--</b></span>
+        <span>+3h: <b id="aqi3h">--</b></span>
+        <span>+6h: <b id="aqi6h">--</b></span>
+      </div>
     </div>
 
     <div class="card">
@@ -262,7 +274,11 @@
       document.getElementById("congIdx").textContent = `${p.congestion_index} / 100`;
       document.getElementById("crisisText").textContent =
         `Crisis (30m): ${(c.crisis_probability_30m * 100).toFixed(1)}% ` + (c.crisis_warning ? "[WARNING]" : "[Normal]");
-      document.getElementById("aqiText").textContent = `PM2.5 (+1h): ${c.pm25_pred_1h} µg/m³ (${c.aqi_category})`;
+      document.getElementById("aqiNow").textContent = `${c.aqi_now ?? "--"} AQI (${c.aqi_category})`;
+      document.getElementById("aqiText").textContent = `Current PM2.5: ${c.pm25_now ?? c.pm25_pred_1h} µg/m³`;
+      document.getElementById("aqi1h").textContent = `${c.aqi_1h ?? "--"} (${c.pm25_pred_1h})`;
+      document.getElementById("aqi3h").textContent = `${c.aqi_3h ?? "--"} (${c.pm25_pred_3h ?? "--"})`;
+      document.getElementById("aqi6h").textContent = `${c.aqi_6h ?? "--"} (${c.pm25_pred_6h ?? "--"})`;
 
       sensorMarkers.forEach(m => m.remove());
       sensorMarkers = [];

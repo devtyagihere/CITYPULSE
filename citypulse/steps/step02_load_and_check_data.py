@@ -21,7 +21,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")          # save plots to file without needing a screen
 import matplotlib.pyplot as plt
-from config import (USE_SYNTHETIC, DATA_RAW_DIR, REPORTS_DIR, TIMEZONE)
+from config import (USE_SYNTHETIC, DATA_RAW_DIR, REPORTS_DIR, TIMEZONE,
+                    REAL_TRAFFIC_PATH, REAL_WEATHER_PATH)
 from common import load_real_traffic, load_real_weather, load_real_pm25
 
 print("=" * 65)
@@ -57,10 +58,28 @@ if USE_SYNTHETIC:
     traffic_df = traffic_df.rename(columns={"data_as_of": "time"})
 
 else:
-    # --- Load real files using the helper from common.py ---
-    traffic_df = load_real_traffic(os.path.join(DATA_RAW_DIR, "DOT_Traffic_Speeds_NBE.csv"))
-    weather_df = load_real_weather(os.path.join(DATA_RAW_DIR, "weather_knyc_2022.csv"))
-    pm25_df    = load_real_pm25(os.path.join(DATA_RAW_DIR, "hourly_88101_2022.csv"))
+    # --- Load real NYC 2018-2019 parquet dataset ---
+    raw_tr = pd.read_parquet(REAL_TRAFFIC_PATH, columns=["segment_id", "timestamp", "speed_mph"])
+    traffic_df = pd.DataFrame({
+        "link_id": raw_tr["segment_id"].astype(str),
+        "time":    pd.to_datetime(raw_tr["timestamp"], utc=True),
+        "speed":   raw_tr["speed_mph"].astype(float),
+        "borough": "Manhattan",
+    })
+
+    raw_w = pd.read_parquet(REAL_WEATHER_PATH)
+    weather_df = pd.DataFrame({
+        "time":     pd.to_datetime(raw_w["timestamp"], utc=True),
+        "temp":     raw_w["temp_c"] * 9.0 / 5.0 + 32.0,
+        "humidity": raw_w["humidity_pct"],
+        "wind":     raw_w["wind_kmh"] * 0.621371,
+        "precip":   raw_w["precip_mm"] / 25.4,
+    })
+
+    # PM2.5 proxy aligned to real weather + traffic hours (until EPA CSV is added)
+    w_h = weather_df.sort_values("time").copy()
+    w_h["pm25"] = (14.0 - 0.25 * w_h["wind"] - 18.0 * w_h["precip"]).clip(lower=2.0)
+    pm25_df = w_h[["time", "pm25"]].copy()
 
 print(f"  Traffic  : {len(traffic_df):>10,} rows loaded")
 print(f"  Weather  : {len(weather_df):>10,} rows loaded")

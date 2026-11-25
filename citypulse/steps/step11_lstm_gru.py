@@ -70,9 +70,9 @@ X_te, Y_te = to_sensor_sequences(te["X"], te["Y"])
 print(f"  GRU train sequences: {X_tr.shape}  |  val: {X_va.shape}  |  test: {X_te.shape}")
 
 train_loader = DataLoader(TensorDataset(torch.tensor(X_tr), torch.tensor(Y_tr)),
-                          batch_size=512, shuffle=True)
+                          batch_size=1024, shuffle=True)
 val_loader   = DataLoader(TensorDataset(torch.tensor(X_va), torch.tensor(Y_va)),
-                          batch_size=512, shuffle=False)
+                          batch_size=1024, shuffle=False)
 
 # ===========================================================================
 # SECTION B — Define a simple 1-layer GRU model
@@ -97,7 +97,7 @@ loss_fn   = nn.L1Loss()   # L1Loss = MAE loss
 # SECTION C — Train with early stopping (fast on CPU: max 12 epochs)
 # ===========================================================================
 print("\n[C] Training GRU ...")
-EPOCHS       = 12
+EPOCHS       = 8
 PATIENCE     = 3
 best_val     = float("inf")
 wait         = 0

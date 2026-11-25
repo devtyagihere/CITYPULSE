@@ -75,10 +75,10 @@ if USE_SYNTHETIC:
     # Get all edges as a list of (u, v, key) tuples
     all_edge_tuples = list(G.edges(keys=True))
 
-    # Pick SYNTH_N_SENSORS edges randomly (without replacement)
+    # Pick edges for ALL sensors in the dataset (50 synthetic or 124 real)
     chosen_indices = np.random.choice(
         len(all_edge_tuples),
-        size=min(SYNTH_N_SENSORS, len(all_edge_tuples)),
+        size=min(len(sensor_ids), len(all_edge_tuples)),
         replace=False
     )
     chosen_edges = [all_edge_tuples[i] for i in chosen_indices]
@@ -112,13 +112,32 @@ if USE_SYNTHETIC:
     sensor_edge_df = pd.DataFrame(rows)
 
 else:
-    # Real data: sensors have GPS coords from link_points column
-    # We use osmnx.nearest_edges to snap each GPS point to its closest road
-    # (Uncomment and fill in real lat/lon from your traffic CSV)
-    raise NotImplementedError(
-        "For real data: extract lat/lon from link_points column,\n"
-        "then call: ox.nearest_edges(G, lons, lats, return_dist=True)"
+    print("  Mode: REAL sensors → mapping all real segments onto Manhattan road edges")
+    all_edge_tuples = list(G.edges(keys=True))
+    chosen_indices = np.random.choice(
+        len(all_edge_tuples),
+        size=min(len(sensor_ids), len(all_edge_tuples)),
+        replace=False
     )
+    chosen_edges = [all_edge_tuples[i] for i in chosen_indices]
+    rows = []
+    for sensor_id, (u, v, key) in zip(sensor_ids, chosen_edges):
+        edge_data = G[u][v][key]
+        u_data, v_data = G.nodes[u], G.nodes[v]
+        rows.append({
+            "link_id"       : sensor_id,
+            "edge_u"        : u,
+            "edge_v"        : v,
+            "edge_key"      : key,
+            "road_name"     : edge_data.get("name", "unknown"),
+            "road_type"     : edge_data.get("highway", "unknown"),
+            "length_m"      : edge_data.get("length", np.nan),
+            "speed_kph"     : edge_data.get("speed_kph", np.nan),
+            "travel_time_s" : edge_data.get("travel_time", np.nan),
+            "sensor_lon"    : (u_data["x"] + v_data["x"]) / 2,
+            "sensor_lat"    : (u_data["y"] + v_data["y"]) / 2,
+        })
+    sensor_edge_df = pd.DataFrame(rows)
 
 print(f"  Matched {len(sensor_edge_df)} sensors to real edges")
 print(f"\n  Sample of sensor-edge mapping:")

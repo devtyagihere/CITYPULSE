@@ -1,5 +1,5 @@
 model,horizon,mae,rmse
-Graph_GRU,+15m,0.08398,0.1083
-Graph_GRU,+30m,0.08534,0.1099
-Graph_GRU,+45m,0.08502,0.10908
-Graph_GRU,+60m,0.08615,0.11114
+Graph_GRU,+15m,0.17281,0.24474
+Graph_GRU,+30m,0.17416,0.24735
+Graph_GRU,+45m,0.17523,0.24812
+Graph_GRU,+60m,0.17651,0.24977

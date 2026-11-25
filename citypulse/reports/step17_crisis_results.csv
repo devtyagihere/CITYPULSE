@@ -1,2 +1,2 @@
 pr_auc,precision,recall,f1,anomaly_pct,mean_congestion_index
-0.9814,0.8532,0.9715,0.9085,19.82,27.29
+0.9567,0.8196,0.9449,0.8778,1.58,18.04

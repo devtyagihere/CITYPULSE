@@ -19,6 +19,8 @@ citypulse/data/processed/*.csv
 citypulse/data/processed/*.json
 citypulse/models/
 citypulse/reports/
+citypulse/steps/
+dataset/
 
 # Offline training & evaluation scripts
 train_model.py

@@ -6,7 +6,12 @@
 import os
 
 # ---- TOP SWITCH: flip to False when you have real data ----
-USE_SYNTHETIC = True   # True = fake data,  False = real data
+USE_SYNTHETIC = False  # True = fake data,  False = real data
+
+# ---- Real dataset paths (NYC 2018-10 to 2019-03) ----
+WORKSPACE_ROOT      = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REAL_TRAFFIC_PATH   = os.path.join(WORKSPACE_ROOT, "data", "processed", "canonical_15min.parquet")
+REAL_WEATHER_PATH   = os.path.join(WORKSPACE_ROOT, "data", "raw", "weather_2018-10-01_2019-03-31.parquet")
 
 # ---- Random seed so results are the same every time ----
 RANDOM_SEED = 42
