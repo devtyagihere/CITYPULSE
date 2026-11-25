@@ -1,0 +1,5 @@
+model,horizon,mae,rmse
+LightGBM,+15m,0.0815,0.10777
+LightGBM,+30m,0.08742,0.11352
+LightGBM,+45m,0.08255,0.10816
+LightGBM,+60m,0.0717,0.09124

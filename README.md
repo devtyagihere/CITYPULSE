@@ -1,48 +1,63 @@
-# TrueLine Backend
+# CITYPULSE — Live Traffic Forecasting, Crisis Detection & Uncertainty-Aware A* Routing
 
-A scalable, modular backend architecture template.
+CITYPULSE is an end-to-end traffic speed forecasting, crisis monitoring, and time-dependent A\* routing system for Manhattan, NYC.
 
-## Directory Structure
+## Architecture
 
 ```text
-├── .github/
-│   └── workflows/          # CI/CD pipeline definitions
-├── docs/                   # System design & API specifications
-├── migrations/             # Database migration scripts
-├── seeds/                  # Initial database seeding scripts
-├── src/
-│   ├── config/             # Environment configs, DB connections, third-party clients
-│   ├── constants/          # Application-wide constant definitions & enums
-│   ├── controllers/        # Request handlers & HTTP response management
-│   ├── middlewares/        # Authentication, validation, error-handling middleware
-│   ├── models/             # Data models & database schemas
-│   ├── repositories/       # Data access layer / persistence logic
-│   ├── routes/             # API routing & endpoint definitions
-│   ├── services/           # Core business logic
-│   ├── types/              # Type definitions & interfaces
-│   ├── utils/              # Helper functions & shared utilities
-│   ├── validators/         # Request schema validation logic
-│   ├── app.js              # Application setup & middleware composition
-│   └── server.js           # Server bootstrap & process lifecycle
-├── tests/
-│   ├── integration/        # End-to-end and API integration test suites
-│   ├── mocks/              # Mock objects and fixture data
-│   └── unit/               # Unit tests for services and utilities
-├── .env.example            # Environment variable template
-├── .gitignore              # Git ignore rules
-├── Dockerfile              # Container definition
-├── docker-compose.yml      # Multi-container orchestration
-└── README.md               # Project documentation
+[1. Ingest: ingest.py]
+    NYC DOT Speeds + Open-Meteo Weather + NYPD Collisions + OSM Road Graph + US Holidays
+        │
+        ▼
+[2. Features: features.py]
+    Leakage-free lag/rolling/calendar/weather features (strictly < t)
+        │
+        ▼
+[3. Predictor: predictor.py]
+    LightGBM (+15/+30/+45/+60m) + P90 Quantile + Isotonic Calibration + Hist-Avg Fallback
+        │
+        ├──► [4. Crisis Rules: crisis_rules.py]  ──► 0–100 Congestion Index & Crisis Type
+        ├──► [5a. Explainability: explainer.py]  ──► TreeSHAP top drivers for high-risk segments
+        └──► [5b. Router: router.py]             ──► Time-Dependent A* with >10% reroute gate
+                    │
+                    ▼
+[6. Orchestrator & Monitor: main.py, monitor.py] ──► outputs/live_snapshot.json
+                    │
+                    ▼
+[7. API & Dashboard: api.py, static/index.html]   ──► FastAPI + Leaflet Dashboard
 ```
 
-## Getting Started
+## Quick Start
 
-1. Clone repository:
+1. **Install dependencies:**
    ```bash
-   git clone https://github.com/devtyagihere/TrueLine.git
-   cd TrueLine
+   pip install -r requirements.txt
    ```
-2. Copy environment file:
+2. **Run one live pipeline cycle:**
    ```bash
-   cp .env.example .env
+   python main.py
    ```
+3. **Start the FastAPI server:**
+   ```bash
+   uvicorn api:app --host 0.0.0.0 --port 8000
+   ```
+   Open `http://127.0.0.1:8000` in your browser.
+
+## API Endpoints
+
+- `GET /` — Serves the live dashboard (`static/index.html`)
+- `GET /api/health` — Health check and snapshot availability
+- `GET /api/snapshot` — Returns the latest `outputs/live_snapshot.json` (or runs a cycle if missing)
+- `POST /api/refresh` — Re-runs the full pipeline with optional `closures`, `origin_node`, `dest_node`, `lambda_penalty`, and `current_route_cost_s`
+
+## Running Tests
+
+```bash
+pytest
+```
+
+## Docker
+
+```bash
+docker compose up --build
+```

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CITYPULSE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: #f2ede6;
+      color: #141414;
+      font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", sans-serif;
+      scroll-behavior: smooth;
+    }
+
+    /* ================= HERO: FULL-WIDTH DULL MANHATTAN PHOTO ================= */
+    .hero {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      min-height: 620px;
+      overflow: hidden;
+      background: #0b0d13;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-image: url("/manhattan_bg.png");
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.28) saturate(0.50);
+      transform: scale(1.02);
+    }
+
+    .hero-scrim {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 10, 16, 0.45);
+    }
+
+    .hero-overlay {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .top-pill {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    .headline {
+      color: #ffffff;
+      font-size: clamp(60px, 9.5vw, 124px);
+      font-weight: 800;
+      line-height: 0.92;
+      letter-spacing: -0.045em;
+      text-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+      user-select: none;
+    }
+
+    .hero-actions {
+      margin-top: 38px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 30px;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #141414;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 26px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s ease;
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    /* ================= CONTENT SECTIONS ================= */
+    .section {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 84px 28px;
+      border-top: 1px solid rgba(20, 20, 20, 0.12);
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: #6b655e;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: clamp(30px, 4vw, 46px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.08;
+      margin-bottom: 20px;
+    }
+
+    .lead {
+      font-size: 18px;
+      line-height: 1.65;
+      color: #3a3733;
+      max-width: 780px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 20px;
+      margin-top: 36px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid rgba(20, 20, 20, 0.1);
+      border-radius: 18px;
+      padding: 26px;
+    }
+
+    .card .num {
+      font-size: 12px;
+      font-weight: 700;
+      color: #8c847b;
+      margin-bottom: 10px;
+    }
+
+    .card h3 {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #4a4640;
+    }
+
+    .dark-band {
+      background: #141414;
+      color: #f2ede6;
+      padding: 84px 28px;
+    }
+
+    .dark-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .dark-band .eyebrow { color: #a19b92; }
+    .dark-band .lead { color: #d5cfc6; }
+
+    .train-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-top: 36px;
+    }
+
+    .train-box {
+      border: 1px solid rgba(242, 237, 230, 0.16);
+      border-radius: 16px;
+      padding: 22px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .train-box h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f2ede6;
+    }
+
+    .train-box p {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: #b8b2a8;
+    }
+
+    .metric-pill {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(242, 237, 230, 0.12);
+      font-size: 12px;
+      font-weight: 700;
+      color: #f2ede6;
+    }
+
+    .bottom-cta {
+      text-align: center;
+      padding: 72px 24px;
+      background: #f2ede6;
+    }
+    .bottom-cta .btn-primary {
+      background: #141414;
+      color: #f2ede6;
+    }
+
+    @media (max-width: 768px) {
+      .hero { flex-direction: column; }
+      .hero-left, .hero-right { width: 100%; height: 50%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO: FULL-WIDTH DULL MANHATTAN PHOTO + BRIGHT WHITE TEXT -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-scrim"></div>
+
+    <div class="hero-overlay">
+      <div class="top-pill">Manhattan · Urban AI</div>
+      <div class="headline">
+        CITY<br />
+        PULSE<br />
+        AI
+      </div>
+      <div class="hero-actions">
+        <a href="/dashboard" class="btn-primary">Enter Dispatch Console &rarr;</a>
+        <a href="/teacher" class="btn-secondary">Teacher Presentation</a>
+        <a href="#about" class="btn-secondary">How It Works</a>
+      </div>
+    </div>
+
+    <div class="scroll-hint">Scroll to explore &darr;</div>
+  </section>
+
+  <!-- ABOUT THE PROJECT -->
+  <section class="section" id="about">
+    <div class="eyebrow">01 · About the Project</div>
+    <h2>Predicting Manhattan congestion before ambulances get stuck.</h2>
+    <p class="lead">
+      Standard navigation only looks at traffic right now—but by the time an ambulance is midway
+      through Manhattan, a clear avenue can turn into gridlock. <strong>CITYPULSE</strong> forecasts
+      road speeds 15 to 60 minutes ahead, predicts PM2.5 air quality, warns of city-wide crises,
+      and routes emergency vehicles to the nearest hospital along real streets using uncertainty-aware A*.
+    </p>
+  </section>
+
+  <!-- HOW WE TRAINED OUR MODELS -->
+  <section class="dark-band" id="training">
+    <div class="dark-inner">
+      <div class="eyebrow">02 · Model Training &amp; Validation</div>
+      <h2>Strict time splits, zero data leakage, honest benchmarks.</h2>
+      <p class="lead">
+        All models are trained on 15-minute sensor, weather, and PM2.5 timelines split strictly by time
+        (<strong>70% train / 10% validation / 20% test</strong>). Free-flow speeds, scalers, and
+        historical averages are fit on training data only, verified with a deliberate leakage test.
+      </p>
+
+      <div class="train-grid">
+        <div class="train-box">
+          <h4>LightGBM (+15m to +60m)</h4>
+          <p>Trained on 16 past-only features: speed lags, 1h rolling mean/std, train-only usual speed, weather, and road-neighbour averages.</p>
+          <span class="metric-pill">Avg MAE: 0.08079</span>
+        </div>
+        <div class="train-box">
+          <h4>PyTorch GRU</h4>
+          <p>Sequence model reading 12 past 15-minute steps (3 hours) per sensor to forecast all 4 future horizons together.</p>
+          <span class="metric-pill">Best Avg MAE: 0.07641</span>
+        </div>
+        <div class="train-box">
+          <h4>PyTorch Graph + GRU</h4>
+          <p>Combines a road-distance Gaussian adjacency matrix with GRU layers and masked MAE loss to model jam spillover.</p>
+          <span class="metric-pill">Avg MAE: 0.08512</span>
+        </div>
+        <div class="train-box">
+          <h4>Quantile &amp; Crisis Models</h4>
+          <p>P10/P50/P90 Quantile LightGBM for uncertainty bands, Isotonic calibration, TreeSHAP, plus Crisis LightGBM &amp; Isolation Forest.</p>
+          <span class="metric-pill">80% Cov: 79.7% · PR-AUC: 0.98</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KEY COMPONENTS -->
+  <section class="section" id="components">
+    <div class="eyebrow">03 · Key Components</div>
+    <h2>Six modules working together end-to-end.</h2>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="num">01</div>
+        <h3>Traffic Forecasting</h3>
+        <p>Predicts Manhattan road speed ratios at +15, +30, +45, and +60 minutes ahead using shared cleaning and feature code in <code>src/common.py</code>.</p>
+      </div>
+      <div class="card">
+        <div class="num">02</div>
+        <h3>Uncertainty &amp; SHAP</h3>
+        <p>Quantile LightGBM estimates worst-case slowdowns (P90 travel time), while TreeSHAP explains the top drivers behind every prediction.</p>
+      </div>
+      <div class="card">
+        <div class="num">03</div>
+        <h3>Crisis &amp; Congestion Index</h3>
+        <p>Computes a live 0–100 Manhattan Congestion Index and warns 30 minutes before &gt;30% of sensors lock up simultaneously.</p>
+      </div>
+      <div class="card">
+        <div class="num">04</div>
+        <h3>PM2.5 Air Quality</h3>
+        <p>Forecasts PM2.5 at +1h, +3h, and +6h using traffic density, wind, rain, and temperature, mapped to official AQI categories.</p>
+      </div>
+      <div class="card">
+        <div class="num">05</div>
+        <h3>A* Hospital Dispatch</h3>
+        <p>Click anywhere on Manhattan to run A* with predicted travel times + uncertainty penalties and snap to real streets toward the nearest hospital.</p>
+      </div>
+      <div class="card">
+        <div class="num">06</div>
+        <h3>FastAPI &amp; Live Weather</h3>
+        <p>Pulls live Central Park (KNYC) weather observations and serves predictions, crisis alerts, and routes over REST endpoints.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bottom-cta">
+    <a href="/dashboard" class="btn-primary">Enter Dispatch Console &rarr;</a>
+  </section>
+
+</body>
+</html>

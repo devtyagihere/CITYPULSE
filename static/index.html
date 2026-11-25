@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CITYPULSE — Live Traffic, Crisis & A* Routing</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .layout { display: grid; grid-template-columns: 1fr 420px; height: 100vh; }
+    #map { width: 100%; height: 100vh; }
+    .sidebar { background: #1e293b; border-left: 1px solid #334155; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    .title { font-size: 18px; font-weight: 700; color: #38bdf8; }
+    .btn { background: #0284c7; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
+    .btn:hover { background: #0369a1; }
+    .btn:disabled { opacity: 0.5; cursor: wait; }
+    .card { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; }
+    .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 8px; font-weight: 700; }
+    .crisis-row { display: flex; align-items: center; justify-content: space-between; }
+    .index-num { font-size: 32px; font-weight: 800; }
+    .badge { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .tabs { display: flex; gap: 6px; }
+    .tab { flex: 1; padding: 6px; text-align: center; border-radius: 6px; background: #0f172a; border: 1px solid #334155; cursor: pointer; font-size: 12px; font-weight: 600; color: #cbd5e1; }
+    .tab.active { background: #0284c7; border-color: #0284c7; color: #fff; }
+    .route-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+    .route-box { background: #1e293b; padding: 8px; border-radius: 6px; font-size: 12px; }
+    .shap-seg { margin-bottom: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+    .shap-driver { display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; margin-top: 3px; }
+    .feed-meta { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function ratioColor(r) {
+      if (r >= 0.75) return "#22c55e";
+      if (r >= 0.55) return "#f59e0b";
+      return "#ef4444";
+    }
+
+    function App() {
+      const [data, setData] = useState(null);
+      const [horizon, setHorizon] = useState("15");
+      const [loading, setLoading] = useState(false);
+      const mapRef = useRef(null);
+      const layerRef = useRef(null);
+
+      const loadSnapshot = async () => {
+        const res = await fetch("/api/snapshot");
+        const json = await res.json();
+        setData(json);
+      };
+
+      const refreshLive = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch("/api/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lambda_penalty: 0.5 }),
+          });
+          const json = await res.json();
+          setData(json);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => { loadSnapshot(); }, []);
+
+      useEffect(() => {
+        if (!mapRef.current) {
+          mapRef.current = L.map("map").setView([40.758, -73.985], 12);
+          L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            attribution: "&copy; OpenStreetMap &copy; CARTO",
+          }).addTo(mapRef.current);
+          layerRef.current = L.layerGroup().addTo(mapRef.current);
+        }
+      }, []);
+
+      useEffect(() => {
+        if (!data || !layerRef.current) return;
+        const lg = layerRef.current;
+        lg.clearLayers();
+
+        // Draw segments colored by predicted speed_ratio for selected horizon
+        data.segments.forEach((s) => {
+          const ratio = s[`speed_ratio_${horizon}`];
+          const spd = s[`pred_speed_${horizon}`];
+          const prob = s[`congestion_prob_${horizon}`];
+          L.polyline([[s.u_lat, s.u_lon], [s.v_lat, s.v_lon]], {
+            color: ratioColor(ratio),
+            weight: 4,
+            opacity: 0.85,
+          })
+            .bindPopup(
+              `<b>${s.name}</b> (Seg ${s.segment_id})<br/>` +
+              `+${horizon}m Speed: <b>${spd} mph</b> (ratio ${ratio})<br/>` +
+              `Congestion Prob: <b>${(prob * 100).toFixed(1)}%</b><br/>` +
+              `Stale/Fallback: ${s.is_stale ? "YES (Hist Avg)" : "Live Model"}`
+            )
+            .addTo(lg);
+        });
+
+        // Draw Current vs CITYPULSE A* routes
+        const curCoords = data.routes?.current_route?.coords || [];
+        const cpCoords = data.routes?.citypulse_route?.coords || [];
+        if (curCoords.length > 1) {
+          L.polyline(curCoords, { color: "#94a3b8", weight: 4, dashArray: "6 6" })
+            .bindPopup("Current-Traffic Route")
+            .addTo(lg);
+        }
+        if (cpCoords.length > 1) {
+          L.polyline(cpCoords, { color: "#38bdf8", weight: 5 })
+            .bindPopup("CITYPULSE Uncertainty-Aware A* Route")
+            .addTo(lg);
+        }
+      }, [data, horizon]);
+
+      if (!data) return <div style={{ padding: 24 }}>Loading CITYPULSE live snapshot...</div>;
+
+      const c = data.crisis;
+      const r = data.routes;
+      const idxColor = c.congestion_index >= 70 ? "#ef4444" : c.congestion_index >= 40 ? "#f59e0b" : "#22c55e";
+
+      return (
+        <div className="layout">
+          <div id="map"></div>
+          <div className="sidebar">
+            <div className="header">
+              <div className="title">CITYPULSE Live</div>
+              <button className="btn" onClick={refreshLive} disabled={loading}>
+                {loading ? "Refreshing..." : "Refresh Live"}
+              </button>
+            </div>
+
+            <div className="tabs">
+              {["15", "30", "45", "60"].map((h) => (
+                <div key={h} className={`tab ${horizon === h ? "active" : ""}`} onClick={() => setHorizon(h)}>
+                  +{h}m
+                </div>
+              ))}
+            </div>
+
+            <div className="card">
+              <div className="card-title">City Crisis Status</div>
+              <div className="crisis-row">
+                <div>
+                  <div className="index-num" style={{ color: idxColor }}>{c.congestion_index}<span style={{ fontSize: 14, color: "#94a3b8" }}>/100</span></div>
+                  <div style={{ fontSize: 12, color: "#cbd5e1" }}>Window: {c.crisis_window}</div>
+                </div>
+                <span className="badge" style={{ background: idxColor + "22", color: idxColor }}>{c.crisis_type}</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>
+                Peak Congested Share: {(c.peak_congested_share * 100).toFixed(1)}% | Closures: {c.active_closures} | Temp: {data.weather.temp_c}°C
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-title">Time-Dependent A* Route Comparison</div>
+              <div className="route-grid">
+                <div className="route-box">
+                  <div style={{ color: "#94a3b8" }}>Current Route</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{r.current_route.time_min} min</div>
+                  <div style={{ color: "#94a3b8" }}>{r.current_route.distance_km} km</div>
+                </div>
+                <div className="route-box" style={{ border: "1px solid #38bdf8" }}>
+                  <div style={{ color: "#38bdf8" }}>CITYPULSE A*</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{r.citypulse_route.time_min} min</div>
+                  <div style={{ color: "#94a3b8" }}>{r.citypulse_route.distance_km} km</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 8 }}>
+                Improvement: <b>{r.pct_improvement}%</b> | &gt;10% Reroute Gate:{" "}
+                <b style={{ color: r.reroute_triggered ? "#22c55e" : "#94a3b8" }}>
+                  {r.reroute_triggered ? "SWITCH ROUTE" : "KEEP CURRENT"}
+                </b>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-title">Top High-Risk SHAP Drivers (+15m)</div>
+              {data.shap_drivers.slice(0, 3).map((seg) => (
+                <div key={seg.segment_id} className="shap-seg">
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>
+                    Seg {seg.segment_id} — {seg.pred_speed_15} mph ({(seg.congestion_prob_15 * 100).toFixed(0)}% risk)
+                  </div>
+                  {seg.drivers.slice(0, 3).map((d, i) => (
+                    <div key={i} className="shap-driver">
+                      <span>{d.feature} ({d.value})</span>
+                      <span style={{ color: d.shap_mph < 0 ? "#ef4444" : "#22c55e" }}>
+                        {d.shap_mph > 0 ? "+" : ""}{d.shap_mph} mph
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="card">
+              <div className="card-title">Feed Provenance & Monitor</div>
+              <div className="feed-meta">
+                <div>Traffic: <b>{data.feeds.traffic.source}</b> ({data.feeds.traffic.is_stale ? "STALE" : "FRESH"})</div>
+                <div>Weather: <b>{data.feeds.weather.source}</b></div>
+                <div>Closures: <b>{data.feeds.closures.source}</b></div>
+                <div>Logged Predictions: {data.monitor.total_logged_predictions} | Delayed MAE: {data.monitor.delayed_mae_15m_mph ?? "N/A"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+model,horizon,mae,rmse
+Persistence,+15m,0.10936,0.14444
+Historical_Average,+15m,0.08352,0.11576
+Seasonal_Naive,+15m,0.11098,0.14554
+Persistence,+30m,0.1222,0.16284
+Historical_Average,+30m,0.09575,0.1362
+Seasonal_Naive,+30m,0.12207,0.16269
+Persistence,+45m,0.13316,0.17818
+Historical_Average,+45m,0.10809,0.15416
+Seasonal_Naive,+45m,0.13301,0.17796
+Persistence,+60m,0.14386,0.19234
+Historical_Average,+60m,0.12062,0.17076
+Seasonal_Naive,+60m,0.14421,0.1927

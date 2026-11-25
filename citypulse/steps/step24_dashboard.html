@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CITYPULSE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f2ede6;
+      --panel: #f2ede6;
+      --card: #ffffff;
+      --border: rgba(20, 20, 20, 0.12);
+      --text: #141414;
+      --muted: #6b655e;
+      --accent: #141414;
+      --pink: #141414;
+      --green: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; height: 100vh; overflow: hidden;
+    }
+    #sidebar {
+      width: 360px; padding: 18px; background: var(--panel);
+      border-right: 1px solid var(--border); overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px; z-index: 10;
+    }
+    .header { display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #141414; letter-spacing: -0.03em; }
+    .badge {
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: #141414; color: #f2ede6;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      padding: 14px 16px; border-radius: 16px;
+    }
+    .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+    .big-num { font-size: 26px; font-weight: 800; margin: 4px 0; letter-spacing: -0.02em; }
+    .small { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    select, input[type=range] {
+      width: 100%; margin-top: 6px; padding: 9px 10px; border-radius: 10px;
+      background: #f2ede6; color: var(--text); border: 1px solid var(--border); font-size: 13px;
+      font-family: inherit; font-weight: 600;
+    }
+    input[type=range] { padding: 0; accent-color: #141414; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    button {
+      flex: 1; padding: 11px 14px; border: none; border-radius: 999px;
+      background: #141414; color: #f2ede6;
+      font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+    button.secondary {
+      flex: 0 0 auto; background: #ffffff; color: #141414;
+      border: 1px solid #141414; padding: 11px 14px;
+    }
+    button:hover { opacity: 0.88; }
+    .stats-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; }
+    .tip {
+      background: #ffffff; border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 12px; font-size: 12px; color: #4a4640;
+    }
+    #map { flex: 1; height: 100vh; cursor: crosshair; background: #0b0d13; }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div class="header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a href="/" style="text-decoration:none; padding:5px 12px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700;">&larr; Home</a>
+        <a href="/teacher" style="text-decoration:none; padding:5px 10px; border-radius:999px; background:#ffffff; border:1px solid #141414; color:#141414; font-size:12px; font-weight:700;">Slides</a>
+        <h1>CITYPULSE</h1>
+      </div>
+      <span class="badge" id="sourceBadge">Loading...</span>
+    </div>
+    <div class="tip"><b>Click anywhere on Manhattan</b> to place Point A (ambulance) and route along real streets to the nearest hospital.</div>
+
+    <div class="card">
+      <div class="label">Point A — Start / Residence</div>
+      <select id="startSel"></select>
+      <div class="label" style="margin-top:10px;">Point B — Hospital</div>
+      <select id="endSel">
+        <option value="AUTO">Auto: Nearest Manhattan Hospital</option>
+      </select>
+      <div class="btn-row">
+        <button onclick="runAStarFromDropdown()">Find A* Route</button>
+        <button class="secondary" onclick="toggle3D()" id="tiltBtn">3D View</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">A* Route Result</div>
+      <div class="big-num" id="routeEta" style="color:var(--green);">-- min</div>
+      <div class="small" id="routeDest">Destination: --</div>
+      <div class="stats-row">
+        <span>Explored: <b id="aExp" style="color:var(--pink);">0</b></span>
+        <span>City: <b id="aPct">0.0%</b></span>
+        <span>Dist: <b id="aDist">-- km</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">City Congestion & Crisis</div>
+      <div class="big-num" id="congIdx">-- / 100</div>
+      <div class="small" id="crisisText">Crisis (30m): --</div>
+      <div class="small" id="aqiText" style="margin-top:4px;">PM2.5 (+1h): --</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Forecast Horizon: <b id="horizonLabel" style="color:var(--accent);">+15m</b></div>
+      <input type="range" id="horizonSlider" min="15" max="60" step="15" value="15" />
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+    let is3D = true;
+    let ambAnim = null;
+    let hospitalMarkers = [];
+    let sensorMarkers = [];
+    let startMarker = null;
+    let endMarker = null;
+    let ambMarker = null;
+
+    // Inline raster styles (load in <50ms, zero external style JSON, zero API key)
+    // Esri Dark Gray has maxzoom: 15 so MapLibre smoothly scales past zoom 15 (no "Map data not available"!)
+    const darkStyle = {
+      version: 8,
+      sources: {
+        "esri-dark": {
+          type: "raster",
+          tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
+          tileSize: 256,
+          maxzoom: 15,
+          attribution: "&copy; Esri"
+        }
+      },
+      layers: [{
+        id: "base",
+        type: "raster",
+        source: "esri-dark",
+        paint: {
+          "raster-brightness-max": 0.38,
+          "raster-contrast": 0.45,
+          "raster-saturation": -0.85
+        }
+      }]
+    };
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: darkStyle,
+      center: [-73.9855, 40.748],
+      zoom: 13,
+      pitch: 45,
+      bearing: -17
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    let mapReady = false;
+    let pendingRoute = null;
+
+    map.on("load", () => {
+      mapReady = true;
+      map.addSource("route", {
+        type: "geojson",
+        data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
+      });
+
+      map.addLayer({
+        id: "route-glow",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#22c55e", "line-width": 12, "line-opacity": 0.32, "line-blur": 4 }
+      });
+
+      map.addLayer({
+        id: "route-core",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#4ade80", "line-width": 4.5, "line-opacity": 0.98 }
+      });
+
+      if (pendingRoute) {
+        map.getSource("route").setData({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: pendingRoute }
+        });
+      }
+    });
+
+    // Load data immediately without waiting for map tiles!
+    (async () => {
+      await loadLocations();
+      await loadMetrics(15);
+      runAStarFromDropdown();
+    })();
+
+    function toggle3D() {
+      is3D = !is3D;
+      map.easeTo({ pitch: is3D ? 45 : 0, bearing: is3D ? -17 : 0, duration: 600 });
+      document.getElementById("tiltBtn").textContent = is3D ? "3D View" : "2D View";
+    }
+
+    function speedColor(sr) {
+      if (sr >= 0.75) return "#22c55e";
+      if (sr >= 0.50) return "#f59e0b";
+      return "#ef4444";
+    }
+
+    function makeDot(color, size, border = "#ffffff") {
+      const el = document.createElement("div");
+      el.style.width = `${size}px`;
+      el.style.height = `${size}px`;
+      el.style.borderRadius = "50%";
+      el.style.background = color;
+      el.style.border = `2px solid ${border}`;
+      el.style.boxShadow = `0 0 10px ${color}`;
+      return el;
+    }
+
+    async function loadLocations() {
+      const res = await fetch(`${API_BASE}/locations`);
+      const data = await res.json();
+      const sSel = document.getElementById("startSel");
+      const eSel = document.getElementById("endSel");
+
+      Object.entries(data.landmarks).forEach(([name, info]) => {
+        sSel.add(new Option(name, info.node));
+      });
+      Object.entries(data.hospitals).forEach(([name, info]) => {
+        eSel.add(new Option(name, info.node));
+        const m = new maplibregl.Marker({ element: makeDot("#ef4444", 12) })
+          .setLngLat([info.lon, info.lat])
+          .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>🏥 ${name}</b>`))
+          .addTo(map);
+        hospitalMarkers.push(m);
+      });
+    }
+
+    async function loadMetrics(horizon) {
+      const [cRes, pRes] = await Promise.all([
+        fetch(`${API_BASE}/crisis`),
+        fetch(`${API_BASE}/predict?horizon=${horizon}`)
+      ]);
+      const c = await cRes.json();
+      const p = await pRes.json();
+
+      document.getElementById("sourceBadge").textContent = c.source.includes("Simulated") ? "Simulated Input" : "Live";
+      document.getElementById("congIdx").textContent = `${p.congestion_index} / 100`;
+      document.getElementById("crisisText").textContent =
+        `Crisis (30m): ${(c.crisis_probability_30m * 100).toFixed(1)}% ` + (c.crisis_warning ? "[WARNING]" : "[Normal]");
+      document.getElementById("aqiText").textContent = `PM2.5 (+1h): ${c.pm25_pred_1h} µg/m³ (${c.aqi_category})`;
+
+      sensorMarkers.forEach(m => m.remove());
+      sensorMarkers = [];
+      p.sensors.forEach(s => {
+        const el = makeDot(speedColor(s.predicted_sr), 7, "#0f172a");
+        const m = new maplibregl.Marker({ element: el })
+          .setLngLat([s.lon, s.lat])
+          .setPopup(new maplibregl.Popup({ offset: 8 }).setHTML(`<b>${s.link_id}</b><br>+${horizon}m ratio: ${s.predicted_sr}`))
+          .addTo(map);
+        sensorMarkers.push(m);
+      });
+    }
+
+    async function drawAStarRoute(url) {
+      if (ambAnim) cancelAnimationFrame(ambAnim);
+
+      const res = await fetch(url);
+      const a = await res.json();
+      const lngLatCoords = a.path_coords.map(p => [p[1], p[0]]);
+
+      // Draw smooth street-snapped route (or queue if map is still initializing)
+      pendingRoute = lngLatCoords;
+      if (mapReady && map.getSource("route")) {
+        map.getSource("route").setData({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: lngLatCoords }
+        });
+      }
+
+      if (startMarker) startMarker.remove();
+      if (endMarker) endMarker.remove();
+      if (ambMarker) ambMarker.remove();
+
+      if (lngLatCoords.length >= 2) {
+        startMarker = new maplibregl.Marker({ element: makeDot("#38bdf8", 14) })
+          .setLngLat(lngLatCoords[0])
+          .setPopup(new maplibregl.Popup().setHTML("<b>Point A: Start</b>"))
+          .addTo(map);
+
+        endMarker = new maplibregl.Marker({ element: makeDot("#ef4444", 15) })
+          .setLngLat(lngLatCoords[lngLatCoords.length - 1])
+          .setPopup(new maplibregl.Popup().setHTML(`<b>Point B: ${a.hospital_name}</b>`))
+          .addTo(map);
+
+        // Animated ambulance dot gliding smoothly along the real street route
+        ambMarker = new maplibregl.Marker({ element: makeDot("#facc15", 11, "#000") })
+          .setLngLat(lngLatCoords[0])
+          .addTo(map);
+
+        let step = 0;
+        function moveAmb() {
+          step = (step + 0.35) % lngLatCoords.length;
+          ambMarker.setLngLat(lngLatCoords[Math.floor(step)]);
+          ambAnim = requestAnimationFrame(moveAmb);
+        }
+        ambAnim = requestAnimationFrame(moveAmb);
+
+        const bounds = new maplibregl.LngLatBounds();
+        lngLatCoords.forEach(c => bounds.extend(c));
+        map.fitBounds(bounds, { padding: 70, pitch: is3D ? 45 : 0, duration: 900 });
+      }
+
+      document.getElementById("routeEta").textContent = `${a.eta_min} min`;
+      document.getElementById("routeDest").textContent = `To: ${a.hospital_name}`;
+      document.getElementById("aExp").textContent = a.explored_count;
+      document.getElementById("aPct").textContent = `${a.pct_city}%`;
+      document.getElementById("aDist").textContent = `${a.dist_km} km`;
+    }
+
+    function runAStarFromDropdown() {
+      const sNode = document.getElementById("startSel").value;
+      const eVal  = document.getElementById("endSel").value;
+      const q = eVal === "AUTO" ? `start_node=${sNode}` : `start_node=${sNode}&end_node=${eVal}`;
+      drawAStarRoute(`${API_BASE}/route_astar?${q}`);
+    }
+
+    map.on("click", e => {
+      const eVal = document.getElementById("endSel").value;
+      const q = eVal === "AUTO"
+        ? `start_lat=${e.lngLat.lat}&start_lon=${e.lngLat.lng}`
+        : `start_lat=${e.lngLat.lat}&start_lon=${e.lngLat.lng}&end_node=${eVal}`;
+      drawAStarRoute(`${API_BASE}/route_astar?${q}`);
+    });
+
+    document.getElementById("horizonSlider").addEventListener("input", e => {
+      const h = e.target.value;
+      document.getElementById("horizonLabel").textContent = `+${h}m`;
+      loadMetrics(h);
+    });
+  </script>
+</body>
+</html>

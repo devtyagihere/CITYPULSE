@@ -1,0 +1,44 @@
+# Heavy raw/training datasets & media not needed at API runtime
+new-york-261122.osm.pbf
+data.zip
+*.mp4
+*.docx
+=
+observations
+observations aqi
+
+# Training / offline parquet & numpy artifacts (runtime uses compact .pkl.gz)
+data/processed/*.parquet
+citypulse/data/raw/
+citypulse/data/processed/*.parquet
+citypulse/data/processed/*.npz
+citypulse/data/processed/*.graphml
+citypulse/data/processed/*.npy
+citypulse/data/processed/*.joblib
+citypulse/data/processed/*.csv
+citypulse/data/processed/*.json
+citypulse/models/
+citypulse/reports/
+
+# Offline training & evaluation scripts
+train_model.py
+baselines.py
+model_eval.py
+
+# Non-runtime directories & dev files
+.git/
+.github/
+.pytest_cache/
+__pycache__/
+*.pyc
+tests/
+docs/
+migrations/
+seeds/
+src/
+outputs/*.png
+outputs/*.md
+outputs/*.csv
+outputs/*.jsonl
+.env
+.env.*

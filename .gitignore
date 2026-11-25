@@ -52,3 +52,19 @@ out/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Python / Testing / Large Local Data
+.pytest_cache/
+*.mp4
+=
+data.zip
+*.osm.pbf
+data/processed/*.parquet
+citypulse/data/raw/
+citypulse/data/processed/*.parquet
+citypulse/data/processed/*.npz
+citypulse/data/processed/*.graphml
+observations
+observations aqi
+outputs/*.json
+outputs/*.jsonl

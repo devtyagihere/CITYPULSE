@@ -1,0 +1,9 @@
+services:
+  citypulse:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./outputs:/app/outputs
+      - ./models:/app/models
+    restart: unless-stopped

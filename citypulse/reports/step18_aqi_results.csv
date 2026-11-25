@@ -1,0 +1,7 @@
+model,horizon,mae,rmse
+Persistence,+1h,4.102,6.229
+LightGBM,+1h,2.373,3.628
+Persistence,+3h,7.519,10.122
+LightGBM,+3h,3.016,4.983
+Persistence,+6h,7.821,10.353
+LightGBM,+6h,2.986,4.965
