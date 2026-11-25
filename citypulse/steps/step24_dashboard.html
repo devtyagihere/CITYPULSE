@@ -348,18 +348,31 @@
       document.getElementById("aDist").textContent = `${a.dist_km} km`;
     }
 
+    let lastClickLat = null;
+    let lastClickLon = null;
+
+    function currentHorizon() {
+      return document.getElementById("horizonSlider").value;
+    }
+
     function runAStarFromDropdown() {
+      lastClickLat = null;
+      lastClickLon = null;
       const sNode = document.getElementById("startSel").value;
       const eVal  = document.getElementById("endSel").value;
-      const q = eVal === "AUTO" ? `start_node=${sNode}` : `start_node=${sNode}&end_node=${eVal}`;
+      const h     = currentHorizon();
+      const q = eVal === "AUTO" ? `start_node=${sNode}&horizon=${h}` : `start_node=${sNode}&end_node=${eVal}&horizon=${h}`;
       drawAStarRoute(`${API_BASE}/route_astar?${q}`);
     }
 
     map.on("click", e => {
+      lastClickLat = e.lngLat.lat;
+      lastClickLon = e.lngLat.lng;
       const eVal = document.getElementById("endSel").value;
+      const h    = currentHorizon();
       const q = eVal === "AUTO"
-        ? `start_lat=${e.lngLat.lat}&start_lon=${e.lngLat.lng}`
-        : `start_lat=${e.lngLat.lat}&start_lon=${e.lngLat.lng}&end_node=${eVal}`;
+        ? `start_lat=${lastClickLat}&start_lon=${lastClickLon}&horizon=${h}`
+        : `start_lat=${lastClickLat}&start_lon=${lastClickLon}&end_node=${eVal}&horizon=${h}`;
       drawAStarRoute(`${API_BASE}/route_astar?${q}`);
     });
 
@@ -367,6 +380,15 @@
       const h = e.target.value;
       document.getElementById("horizonLabel").textContent = `+${h}m`;
       loadMetrics(h);
+      const eVal = document.getElementById("endSel").value;
+      if (lastClickLat !== null && lastClickLon !== null) {
+        const q = eVal === "AUTO"
+          ? `start_lat=${lastClickLat}&start_lon=${lastClickLon}&horizon=${h}`
+          : `start_lat=${lastClickLat}&start_lon=${lastClickLon}&end_node=${eVal}&horizon=${h}`;
+        drawAStarRoute(`${API_BASE}/route_astar?${q}`);
+      } else {
+        runAStarFromDropdown();
+      }
     });
   </script>
 </body>

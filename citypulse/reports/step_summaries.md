@@ -762,3 +762,13 @@
 
 ---
 
+## Step 19: Dijkstra From Scratch
+
+**What we did:** Wrote Dijkstra's shortest-path algorithm from scratch using Python's `heapq` and tested it on 20 random Manhattan trips.
+
+**What we got:** Exact match with NetworkX on all 20 trips (max difference = **0.000000 s**).
+
+**Key number:** **20/20 trips matched** NetworkX with 0.000000s error.
+
+---
+

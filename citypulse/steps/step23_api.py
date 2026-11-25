@@ -105,17 +105,19 @@ def load_snapshot():
         return json.load(f)
 
 
-def apply_weights_from_snapshot(G, sensor_edge, snap):
+def apply_weights_from_snapshot(G, sensor_edge, snap, horizon=15):
     sr_map = {s["link_id"]: s for s in snap["sensors"]}
     edge_lookup = {
         (int(r["edge_u"]), int(r["edge_v"])): sr_map[r["link_id"]]
         for _, r in sensor_edge.iterrows() if r["link_id"] in sr_map
     }
-    city_p50 = snap["city_metrics"]["mean_speed_ratio"]
+    pred_key = f"pred_{horizon}m"
+    # Estimate horizon-level city average from sensors
+    city_p50 = sum(float(s.get(pred_key, s["pred_15m"])) for s in snap["sensors"]) / max(1, len(snap["sensors"]))
     for u, v, _, d in G.edges(keys=True, data=True):
         base = d["base_tt"]
         info = edge_lookup.get((u, v))
-        p50 = max(float(info["pred_15m"]) if info else city_p50, 0.15)
+        p50 = max(float(info.get(pred_key, info["pred_15m"])) if info else city_p50, 0.15)
         p10 = max(float(info["p10_15m"]) if info else max(city_p50 - 0.1, 0.15), 0.15)
         d["pred_time"] = base / p50
         d["risk_cost"] = (base / p50) + ROUTE_UNCERTAINTY_LAMBDA * max(0.0, (base / p10) - (base / p50))
@@ -285,14 +287,16 @@ def route_astar(
     start_lon: float = Query(None),
     start_node: int = Query(None),
     end_node: int = Query(None),
+    horizon: int = Query(15, enum=[15, 30, 45, 60]),
 ):
     """
     Compute A* route from Point A (clicked lat/lon or start_node)
-    to Point B (selected hospital end_node, or automatically the NEAREST hospital).
+    to Point B (selected hospital end_node, or automatically the NEAREST hospital)
+    using the selected forecast horizon (+15m, +30m, +45m, +60m).
     """
     snap = load_snapshot()
     G, sensor_edge, _, hosp = get_graph_and_edges()
-    apply_weights_from_snapshot(G, sensor_edge, snap)
+    apply_weights_from_snapshot(G, sensor_edge, snap, horizon=horizon)
 
     if start_lat is not None and start_lon is not None:
         s_node = nearest_node_in_graph(G, start_lat, start_lon)
