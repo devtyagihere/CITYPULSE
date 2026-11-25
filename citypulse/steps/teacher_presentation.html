@@ -121,6 +121,25 @@
       background: #141414; color: #f2ede6; border-radius: 16px; padding: 20px 24px;
       font-size: 14px; margin-bottom: 40px;
     }
+
+    /* Accuracy KPI Grid */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px; margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: #ffffff; border: 1px solid rgba(20,20,20,0.12);
+      border-radius: 16px; padding: 18px 20px;
+    }
+    .kpi-card .kpi-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.7px; color: #6b655e; margin-bottom: 6px;
+    }
+    .kpi-card .kpi-val {
+      font-size: 28px; font-weight: 800; letter-spacing: -0.03em; color: #141414;
+      line-height: 1.1; margin-bottom: 4px;
+    }
+    .kpi-card .kpi-sub { font-size: 12px; color: #4a4640; }
   </style>
 </head>
 <body>
@@ -134,9 +153,9 @@
 
   <div class="container">
     <div class="note-box">
-      <b>Research Prototype Notice:</b> All metrics and graphs below were generated using synthetic data
-      (<code>USE_SYNTHETIC = True</code>) to verify the end-to-end ML pipeline. Switching to real NYC DOT, EPA,
-      and NOAA data is a one-line change in <code>src/config.py</code>.
+      <b>Real NYC Dataset Active (<code>USE_SYNTHETIC = False</code>):</b> All models and charts below
+      were trained on <b>2,165,164 rows</b> of real NYC 2018–2019 traffic data (124 road segments)
+      paired with Central Park (KNYC) weather observations.
     </div>
 
     <!-- 1. WORKFLOW CHART -->
@@ -240,8 +259,87 @@
 
     <!-- 3. ALL TRAINED MODELS -->
     <section>
-      <div class="eyebrow">03 · Trained Models &amp; Benchmarks</div>
-      <h2>All Models Trained in CITYPULSE</h2>
+      <div class="eyebrow">03 · Trained Models &amp; Accuracy</div>
+      <h2>Model Accuracy &amp; Benchmarks (Held-Out Test Set)</h2>
+      <p class="subtitle">
+        Evaluated on chronological held-out test data (<b>324,880 rows</b> for production <code>speed_model_v1</code>)
+        with strict leakage-free features (<code>&lt; t</code>).
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Congestion ROC-AUC</div>
+          <div class="kpi-val">95.00%</div>
+          <div class="kpi-sub">Calibrated LightGBM (<code>0.9500</code> AUC, ECE <code>0.0051</code>)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Crisis Warning PR-AUC</div>
+          <div class="kpi-val">95.67%</div>
+          <div class="kpi-sub">Recall <b>94.5%</b> &middot; Precision <b>82.0%</b> &middot; F1 <b>0.878</b></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">+15m Speed MAE</div>
+          <div class="kpi-val">3.29 mph</div>
+          <div class="kpi-sub"><b>43.2%</b> lower error vs Hist. Avg (5.79 mph)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">P90 Interval Coverage</div>
+          <div class="kpi-val">88.73%</div>
+          <div class="kpi-sub">Target 90.0% &middot; Brier Score <code>0.0645</code></div>
+        </div>
+      </div>
+
+      <table style="margin-bottom: 24px;">
+        <thead>
+          <tr>
+            <th>Production Model (<code>speed_model_v1</code>)</th>
+            <th>+15m MAE</th>
+            <th>+30m MAE</th>
+            <th>+45m MAE</th>
+            <th>+60m MAE</th>
+            <th>Mean MAE</th>
+            <th>vs Hist. Avg</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>LightGBM Regressor</b></td>
+            <td><b>3.2885 mph</b></td>
+            <td><b>3.7661 mph</b></td>
+            <td><b>4.1118 mph</b></td>
+            <td><b>4.3731 mph</b></td>
+            <td><b>3.8849 mph</b></td>
+            <td><span class="tag">-35.1% Error (PASS)</span></td>
+          </tr>
+          <tr>
+            <td>Persistence Baseline</td>
+            <td>3.8096 mph</td>
+            <td>4.5268 mph</td>
+            <td>5.0954 mph</td>
+            <td>5.6052 mph</td>
+            <td>4.7592 mph</td>
+            <td>-20.5%</td>
+          </tr>
+          <tr>
+            <td>Historical Average</td>
+            <td>5.7855 mph</td>
+            <td>5.8576 mph</td>
+            <td>6.0271 mph</td>
+            <td>6.2636 mph</td>
+            <td>5.9835 mph</td>
+            <td>Baseline</td>
+          </tr>
+          <tr>
+            <td>Seasonal Naive</td>
+            <td>5.8913 mph</td>
+            <td>6.1542 mph</td>
+            <td>6.4454 mph</td>
+            <td>6.7496 mph</td>
+            <td>6.3101 mph</td>
+            <td>+5.5%</td>
+          </tr>
+        </tbody>
+      </table>
 
       <table>
         <thead>
@@ -256,49 +354,49 @@
           <tr>
             <td><b>PyTorch GRU</b></td>
             <td>Traffic Speed (+15m to +60m)</td>
-            <td><b>Best Avg MAE = 0.07641</b> (+15m MAE = 0.07555)</td>
+            <td><b>Best Avg MAE = 0.06872</b> (+15m MAE = 0.04684)</td>
             <td><button class="file-btn" onclick="openLocalFile('step11_lstm_gru.py')">step11_lstm_gru.py</button></td>
           </tr>
           <tr>
             <td><b>LightGBM Regressor</b></td>
             <td>Traffic Speed (+15m to +60m)</td>
-            <td>Avg MAE = <b>0.08079</b> (+60m MAE = 0.07170)</td>
+            <td>Avg MAE = <b>0.07947</b> (+15m MAE = 0.05464)</td>
             <td><button class="file-btn" onclick="openLocalFile('step10_lightgbm.py')">step10_lightgbm.py</button></td>
           </tr>
           <tr>
             <td><b>PyTorch Graph + GRU</b></td>
             <td>Spatial-Temporal Traffic</td>
-            <td>Avg MAE = <b>0.08512</b> (uses road adjacency matrix)</td>
+            <td>Avg MAE = <b>0.17468</b> (uses 124&times;124 road adjacency matrix)</td>
             <td><button class="file-btn" onclick="openLocalFile('step12_graph_model.py')">step12_graph_model.py</button></td>
           </tr>
           <tr>
-            <td><b>Baselines (Hist Avg / Persist)</b></td>
+            <td><b>Baselines (Persist / Hist Avg)</b></td>
             <td>Traffic Benchmarks</td>
-            <td>Hist Avg = <b>0.10200</b> &middot; Persistence = <b>0.12715</b></td>
+            <td>Persistence = <b>0.08470</b> &middot; Hist Avg = <b>0.13113</b></td>
             <td><button class="file-btn" onclick="openLocalFile('step09_baselines.py')">step09_baselines.py</button></td>
           </tr>
           <tr>
             <td><b>Quantile LightGBM (P10/P50/P90)</b></td>
             <td>Uncertainty Intervals</td>
-            <td><b>79.66%</b> empirical coverage inside [P10, P90] (target ~80%)</td>
+            <td><b>79.71%</b> empirical coverage inside [P10, P90] (target ~80%)</td>
             <td><button class="file-btn" onclick="openLocalFile('step14_uncertainty.py')">step14_uncertainty.py</button></td>
           </tr>
           <tr>
             <td><b>Isotonic Regression</b></td>
             <td>Congestion Probability</td>
-            <td>Test Brier Score = <b>0.05033</b></td>
+            <td>Test Brier Score = <b>0.03839</b></td>
             <td><button class="file-btn" onclick="openLocalFile('step15_calibration.py')">step15_calibration.py</button></td>
           </tr>
           <tr>
             <td><b>LightGBM Classifier + IsoForest</b></td>
             <td>City Crisis Warning (30m)</td>
-            <td><b>PR-AUC = 0.9814</b> &middot; <b>F1 = 0.9085</b></td>
+            <td><b>PR-AUC = 0.9567</b> &middot; <b>F1 = 0.8778</b></td>
             <td><button class="file-btn" onclick="openLocalFile('step17_crisis_model.py')">step17_crisis_model.py</button></td>
           </tr>
           <tr>
             <td><b>LightGBM Regressor (PM2.5)</b></td>
             <td>Air Quality (+1h / +3h / +6h)</td>
-            <td>+1h MAE = <b>2.373 &mu;g/m&sup3;</b> (beats Persistence 4.102)</td>
+            <td>+1h MAE = <b>0.18 &mu;g/m&sup3;</b> (beats Persistence 0.27)</td>
             <td><button class="file-btn" onclick="openLocalFile('step18_aqi_model.py')">step18_aqi_model.py</button></td>
           </tr>
         </tbody>
